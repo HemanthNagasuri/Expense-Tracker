@@ -1,0 +1,20 @@
+{
+  "name": "HostelSpend",
+  "short_name": "HostelSpend",
+  "description": "Offline UPI expense tracker for hostel life.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#09090b",
+  "theme_color": "#0d9488",
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "./icons/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

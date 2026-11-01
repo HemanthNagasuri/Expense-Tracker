@@ -1,4 +1,4 @@
-const CACHE_NAME = "hostelspend-v6";
+const CACHE_NAME = "hostelspend-v19";
 const CORE_ASSETS = [
   "./",
   "./index.html",

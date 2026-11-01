@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="en-IN" class="dark">
+<html lang="en-IN" class="dark" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0d9488" />
+    <script>
+      document.documentElement.dataset.theme = localStorage.getItem("hostelSpend_theme") === "light" ? "light" : "dark";
+    </script>
     <meta name="description" content="Offline hostel expense tracker for UPI spending, daily allowable spend, and category limits." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -38,18 +41,1130 @@
         },
       };
     </script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --surface: #111114;
+        --surface-raised: #18181c;
+        --surface-soft: #0c0c0f;
+        --line: rgba(255, 255, 255, 0.08);
+        --muted: #92929c;
+        --accent: #70e1c1;
+        --accent-strong: #48c9a7;
+      }
+
+      body.min-h-dvh.bg-ink-950 {
+        background:
+          radial-gradient(ellipse at 50% -18%, rgba(35, 91, 77, 0.18), transparent 42%),
+          #080809;
+        color: #f4f4f5;
+      }
+
+      #app-shell {
+        max-width: 34rem;
+      }
+
+      #app-header {
+        padding: 0.25rem 0.15rem 0.75rem;
+      }
+
+      #app-header > div:first-child > p {
+        color: var(--accent);
+        letter-spacing: 0.22em;
+      }
+
+      #month-label {
+        border-color: var(--line);
+        background: rgba(24, 24, 28, 0.92);
+        color: #d4d4d8;
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+      }
+
+      #daily-card {
+        border-color: rgba(112, 225, 193, 0.17);
+        background:
+          radial-gradient(ellipse at 100% 0%, rgba(72, 201, 167, 0.12), transparent 48%),
+          linear-gradient(145deg, #15191a, #101012 72%);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.045);
+      }
+
+      #daily-card > p:first-child {
+        color: #a7dfcf;
+      }
+
+      #daily-allowable {
+        letter-spacing: -0.045em;
+      }
+
+      #daily-status {
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+      }
+
+      #spent-total {
+        color: var(--accent);
+      }
+
+      #budget-progress {
+        box-shadow: 0 0 14px rgba(112, 225, 193, 0.28);
+      }
+
+      #category-list > div,
+      #expense-list > li,
+      #history-list > li,
+      #settings-form article,
+      #expense-form {
+        border-color: var(--line);
+        background: linear-gradient(145deg, #141417, #101012);
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
+      }
+
+      #category-heading,
+      #recent-heading,
+      #history-heading {
+        color: #a1a1aa;
+        letter-spacing: 0.12em;
+      }
+
+      #expense-form input,
+      #expense-form select,
+      #settings-form input,
+      #history-month {
+        border-color: rgba(255, 255, 255, 0.09);
+        background-color: #0d0d10;
+        color: #f4f4f5;
+        transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+      }
+
+      #expense-form input::placeholder,
+      #settings-form input::placeholder {
+        color: #666670;
+      }
+
+      #expense-form input:focus,
+      #expense-form select:focus,
+      #settings-form input:focus,
+      #history-month:focus {
+        border-color: rgba(112, 225, 193, 0.62);
+        background-color: #111417;
+        box-shadow: 0 0 0 3px rgba(112, 225, 193, 0.1);
+      }
+
+      html select {
+        appearance: none;
+        padding-right: 2.75rem !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2392929c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.9rem center;
+        background-size: 1rem;
+      }
+
+      html select option {
+        background: #15151d;
+        color: #f4f4f5;
+        font: inherit;
+      }
+
+      html select option:checked {
+        background: #244b40;
+        color: #eafff8;
+      }
+
+      html select option:disabled {
+        color: #85858e;
+      }
+
+      .custom-select {
+        position: relative;
+      }
+
+      .custom-select-native {
+        display: none !important;
+      }
+
+      .custom-select-trigger {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 1rem;
+        background: #0d0d10;
+        padding: 0.75rem 1rem;
+        color: #f4f4f5;
+        text-align: left;
+        transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+      }
+
+      .custom-select-trigger:hover,
+      .custom-select-trigger[aria-expanded="true"] {
+        border-color: rgba(112, 225, 193, 0.5);
+        background: #111417;
+      }
+
+      .custom-select-trigger:focus-visible {
+        border-color: rgba(112, 225, 193, 0.62);
+        box-shadow: 0 0 0 3px rgba(112, 225, 193, 0.1);
+      }
+
+      .custom-select-trigger svg {
+        flex: none;
+        color: var(--accent);
+        transition: transform 160ms ease;
+      }
+
+      .custom-select-trigger[aria-expanded="true"] svg {
+        transform: rotate(180deg);
+      }
+
+      .custom-select-listbox {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        left: 0;
+        z-index: 70;
+        max-height: min(18rem, 55vh);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        background: rgba(21, 22, 24, 0.98);
+        padding: 0.375rem;
+        color: #f4f4f5;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(20px);
+      }
+
+      .custom-select-listbox[hidden] {
+        display: none;
+      }
+
+      .custom-select[data-placement="above"] .custom-select-listbox {
+        top: auto;
+        bottom: calc(100% + 0.5rem);
+      }
+
+      .custom-select-open {
+        z-index: 60;
+      }
+
+      .custom-select-form-open {
+        position: relative;
+        z-index: 60;
+      }
+
+      .custom-select-option {
+        display: flex;
+        min-height: 2.75rem;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        border-radius: 0.7rem;
+        padding: 0.625rem 0.75rem;
+        color: #d4d4d8;
+        text-align: left;
+        transition: background-color 140ms ease, color 140ms ease;
+      }
+
+      .custom-select-option:hover,
+      .custom-select-option:focus-visible {
+        background: rgba(112, 225, 193, 0.1);
+        color: #b6f3df;
+        outline: none;
+      }
+
+      .custom-select-option[aria-selected="true"] {
+        background: rgba(72, 201, 167, 0.16);
+        color: #a5ecd5;
+        font-weight: 600;
+      }
+
+      .custom-select-option:disabled {
+        color: #85858e;
+        cursor: not-allowed;
+      }
+
+      .date-picker-trigger {
+        display: flex;
+        min-height: 3rem;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 1rem;
+        background: #0d0d10;
+        padding: 0.75rem 1rem;
+        color: #f4f4f5;
+        text-align: left;
+        transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+      }
+
+      .date-picker-trigger:hover,
+      .date-picker-trigger[aria-expanded="true"] {
+        border-color: rgba(112, 225, 193, 0.5);
+        background: #111417;
+      }
+
+      .date-picker-trigger:focus-visible {
+        border-color: rgba(112, 225, 193, 0.62);
+        box-shadow: 0 0 0 3px rgba(112, 225, 193, 0.1);
+      }
+
+      .date-picker-trigger svg {
+        flex: none;
+        color: var(--accent);
+      }
+
+      .date-picker-popover {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        z-index: 50;
+        width: min(19rem, calc(100vw - 3rem));
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1.25rem;
+        background: rgba(21, 22, 24, 0.98);
+        padding: 1rem;
+        color: #f4f4f5;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(20px);
+      }
+
+      .date-picker-popover[hidden] {
+        display: none;
+      }
+
+      .date-picker-popover[data-placement="above"] {
+        top: auto;
+        bottom: calc(100% + 0.5rem);
+      }
+
+      .date-picker-open {
+        position: relative;
+        z-index: 60;
+      }
+
+      .calendar-nav-button,
+      .calendar-day,
+      .calendar-today {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        border-radius: 0.75rem;
+        transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+      }
+
+      .calendar-nav-button {
+        height: 2.25rem;
+        width: 2.25rem;
+        color: #b7c1bc;
+      }
+
+      .calendar-nav-button:hover,
+      .calendar-day:hover,
+      .calendar-today:hover {
+        background: rgba(112, 225, 193, 0.1);
+        color: #9cebd4;
+      }
+
+      .calendar-day {
+        aspect-ratio: 1;
+        width: 100%;
+        color: #d4d4d8;
+        font-size: 0.875rem;
+      }
+
+      .calendar-day[data-outside-month="true"] {
+        color: #62656b;
+      }
+
+      .calendar-day[data-today="true"] {
+        border-color: rgba(112, 225, 193, 0.4);
+      }
+
+      .calendar-day[aria-pressed="true"] {
+        background: linear-gradient(135deg, #72e3c2, #48c9a7);
+        color: #06251d;
+        font-weight: 700;
+      }
+
+      .calendar-today {
+        padding: 0.5rem 0.75rem;
+        color: #83dfc3;
+        font-size: 0.8125rem;
+        font-weight: 600;
+      }
+
+      #expense-form button[type="submit"],
+      #settings-form button[type="submit"],
+      #planned-form button[type="submit"],
+      #goal-form button[type="submit"],
+      #shared-form button[type="submit"] {
+        background: linear-gradient(135deg, #72e3c2, #48c9a7);
+        color: #06251d;
+        box-shadow: 0 8px 22px rgba(72, 201, 167, 0.14);
+      }
+
+      #expense-form button[type="submit"]:hover,
+      #settings-form button[type="submit"]:hover,
+      #planned-form button[type="submit"]:hover,
+      #goal-form button[type="submit"]:hover,
+      #shared-form button[type="submit"]:hover {
+        background: linear-gradient(135deg, #91efd3, #5cdbb8);
+      }
+
+      nav[aria-label="Primary"] {
+        border-color: rgba(255, 255, 255, 0.08);
+        background: rgba(20, 22, 23, 0.88);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+        backdrop-filter: blur(18px);
+      }
+
+      nav[aria-label="Primary"] .nav-btn {
+        transition: color 160ms ease, background-color 160ms ease, transform 160ms ease;
+      }
+
+      nav[aria-label="Primary"] .nav-btn:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      nav[aria-label="Primary"] .nav-btn.text-teal-300 {
+        color: var(--accent);
+      }
+
+      #toast {
+        background: #e8fff7;
+        color: #10251f;
+      }
+
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+
+      @media (max-width: 639px) {
+        #app-shell {
+          padding-left: 1.15rem;
+          padding-right: 1.15rem;
+        }
+      }
+
+      html[data-theme="light"] {
+        color-scheme: light;
+        --line: rgba(25, 38, 32, 0.1);
+        --accent: #17866b;
+        --accent-strong: #14785f;
+      }
+
+      html[data-theme="light"] body.min-h-dvh.bg-ink-950 {
+        background:
+          radial-gradient(ellipse at 50% -18%, rgba(86, 190, 151, 0.13), transparent 44%),
+          #f2f5f3;
+        color: #202a25;
+      }
+
+      html[data-theme="light"] #app-header > div:first-child > h1 {
+        color: #17211c;
+      }
+
+      html[data-theme="light"] #month-label,
+      html[data-theme="light"] #theme-toggle {
+        border-color: rgba(25, 38, 32, 0.1);
+        background: rgba(255, 255, 255, 0.88);
+        color: #42514a;
+        box-shadow: 0 2px 8px rgba(30, 50, 40, 0.04);
+      }
+
+      html[data-theme="light"] #daily-card {
+        border-color: rgba(23, 134, 107, 0.2);
+        background:
+          radial-gradient(ellipse at 100% 0%, rgba(74, 190, 151, 0.14), transparent 48%),
+          linear-gradient(145deg, #e8f4ee, #ffffff 78%);
+        box-shadow: 0 16px 38px rgba(36, 82, 61, 0.08), inset 0 1px #ffffff;
+      }
+
+      html[data-theme="light"] #daily-card > p:first-child {
+        color: #39715e;
+      }
+
+      html[data-theme="light"] #daily-allowable,
+      html[data-theme="light"] #budget-card .text-white,
+      html[data-theme="light"] #budget-total {
+        color: #18251f;
+      }
+
+      html[data-theme="light"] #days-left,
+      html[data-theme="light"] #daily-hint,
+      html[data-theme="light"] #budget-remaining,
+      html[data-theme="light"] #history-total {
+        color: #586760;
+      }
+
+      html[data-theme="light"] #daily-status {
+        color: #1d684f;
+        background: #dcefe5;
+        box-shadow: inset 0 0 0 1px rgba(23, 134, 107, 0.08);
+      }
+
+      html[data-theme="light"] #daily-status[class*="bg-rose-500"] {
+        color: #a42c32;
+        background: #fce4e4;
+      }
+
+      html[data-theme="light"] #daily-status[class*="bg-orange-500"] {
+        color: #91520d;
+        background: #fff0d9;
+      }
+
+      html[data-theme="light"] #daily-status[class*="bg-zinc-800"] {
+        color: #53615a;
+        background: #e7ebe8;
+      }
+
+      html[data-theme="light"] #category-list > div,
+      html[data-theme="light"] #category-list > p,
+      html[data-theme="light"] #expense-list > li,
+      html[data-theme="light"] #history-list > li,
+      html[data-theme="light"] #budget-card,
+      html[data-theme="light"] #settings-form article,
+      html[data-theme="light"] #expense-form {
+        border-color: rgba(25, 38, 32, 0.09);
+        background: linear-gradient(145deg, #ffffff, #f8faf8);
+        box-shadow: 0 5px 18px rgba(30, 50, 40, 0.035), inset 0 1px #ffffff;
+      }
+
+      html[data-theme="light"] #category-list > div {
+        border-color: rgba(67, 117, 91, 0.14);
+        background: linear-gradient(145deg, #f8fbf8, #eef5ef);
+        box-shadow: inset 0 1px #ffffff, 0 4px 14px rgba(45, 80, 57, 0.035);
+      }
+
+      html[data-theme="light"] #expense-list > li,
+      html[data-theme="light"] #history-list > li,
+      html[data-theme="light"] #settings-form article,
+      html[data-theme="light"] #expense-form {
+        border-color: rgba(67, 117, 91, 0.12);
+        background: linear-gradient(145deg, #f8fbf8, #eef5ef);
+        box-shadow: inset 0 1px #ffffff, 0 4px 14px rgba(45, 80, 57, 0.035);
+      }
+
+      html[data-theme="light"] #category-limits > div {
+        border-color: rgba(67, 117, 91, 0.13);
+        background: linear-gradient(145deg, #f8fbf8, #eef5ef);
+        box-shadow: inset 0 1px #ffffff, 0 3px 10px rgba(45, 80, 57, 0.025);
+      }
+
+      html[data-theme="light"] #category-heading,
+      html[data-theme="light"] #reports-heading,
+      html[data-theme="light"] #planned-heading,
+      html[data-theme="light"] #recent-heading,
+      html[data-theme="light"] #history-heading {
+        color: #68756e;
+      }
+
+      html[data-theme="light"] #category-list p.text-zinc-200,
+      html[data-theme="light"] #expense-list p.text-zinc-200,
+      html[data-theme="light"] #history-list p.text-zinc-200 {
+        color: #26332c;
+      }
+
+      html[data-theme="light"] #category-list > div > p {
+        color: #30463a;
+      }
+
+      html[data-theme="light"] #expense-list p.text-zinc-200,
+      html[data-theme="light"] #history-list p.text-zinc-200,
+      html[data-theme="light"] #settings-form h2,
+      html[data-theme="light"] #category-limits label,
+      html[data-theme="light"] #expense-form label {
+        color: #30463a;
+      }
+
+      html[data-theme="light"] #category-list .text-zinc-500,
+      html[data-theme="light"] #expense-list .text-zinc-500,
+      html[data-theme="light"] #history-list .text-zinc-500,
+      html[data-theme="light"] #settings-form p.text-zinc-400,
+      html[data-theme="light"] #budget-card .text-zinc-400,
+      html[data-theme="light"] #budget-card .text-zinc-500,
+      html[data-theme="light"] #recent-heading + span,
+      html[data-theme="light"] #history-total {
+        color: #77837c;
+      }
+
+      html[data-theme="light"] #category-list .text-zinc-400 {
+        color: #557260;
+      }
+
+      html[data-theme="light"] #category-list .text-rose-400 {
+        color: #ad555b;
+      }
+
+      html[data-theme="light"] #budget-card .bg-zinc-800,
+      html[data-theme="light"] #category-list .bg-zinc-800 {
+        background-color: #e4e9e5;
+      }
+
+      html[data-theme="light"] #category-list .bg-zinc-800 {
+        background-color: #dce8df;
+      }
+
+      html[data-theme="light"] #category-list .bg-teal-400 {
+        background-color: #68ad88;
+        box-shadow: 0 0 8px rgba(72, 143, 101, 0.12);
+      }
+
+      html[data-theme="light"] #category-list .bg-rose-500 {
+        background-color: #d48283;
+      }
+
+      html[data-theme="light"] #expense-form label,
+      html[data-theme="light"] #settings-form label,
+      html[data-theme="light"] #settings-form h2 {
+        color: #34443b;
+      }
+
+      html[data-theme="light"] #expense-form input,
+      html[data-theme="light"] #expense-form select,
+      html[data-theme="light"] #settings-form input,
+      html[data-theme="light"] #history-month {
+        border-color: rgba(25, 38, 32, 0.12);
+        background-color: #fdfefd;
+        color: #202a25;
+      }
+
+      html[data-theme="light"] select option {
+        background: #f8fbf8;
+        color: #263a2f;
+      }
+
+      html[data-theme="light"] select option:checked {
+        background: #dcefe3;
+        color: #24543b;
+      }
+
+      html[data-theme="light"] select option:disabled {
+        color: #8a958e;
+      }
+
+      html[data-theme="light"] .custom-select-trigger {
+        border-color: rgba(25, 38, 32, 0.12);
+        background: rgba(255, 255, 255, 0.78);
+        color: #26332c;
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.9), 0 3px 10px rgba(45, 80, 57, 0.035);
+      }
+
+      html[data-theme="light"] .custom-select-trigger:hover,
+      html[data-theme="light"] .custom-select-trigger[aria-expanded="true"] {
+        border-color: rgba(23, 134, 107, 0.45);
+        background: #ffffff;
+      }
+
+      html[data-theme="light"] .custom-select-trigger svg {
+        color: #17866b;
+      }
+
+      html[data-theme="light"] .custom-select-listbox {
+        border-color: rgba(67, 117, 91, 0.16);
+        background: rgba(250, 252, 250, 0.98);
+        color: #26332c;
+        box-shadow: 0 18px 48px rgba(45, 80, 57, 0.16), inset 0 1px #ffffff;
+      }
+
+      html[data-theme="light"] .custom-select-option {
+        color: #34443b;
+      }
+
+      html[data-theme="light"] .custom-select-option:hover,
+      html[data-theme="light"] .custom-select-option:focus-visible {
+        background: rgba(23, 134, 107, 0.09);
+        color: #14785f;
+      }
+
+      html[data-theme="light"] .custom-select-option[aria-selected="true"] {
+        background: #dcefe3;
+        color: #24543b;
+      }
+
+      html[data-theme="light"] .custom-select-option:disabled {
+        color: #8a958e;
+      }
+
+      html[data-theme="light"] .date-picker-trigger {
+        border-color: rgba(25, 38, 32, 0.12);
+        background: rgba(255, 255, 255, 0.78);
+        color: #26332c;
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.9), 0 3px 10px rgba(45, 80, 57, 0.035);
+      }
+
+      html[data-theme="light"] .date-picker-trigger:hover,
+      html[data-theme="light"] .date-picker-trigger[aria-expanded="true"] {
+        border-color: rgba(23, 134, 107, 0.45);
+        background: #ffffff;
+      }
+
+      html[data-theme="light"] .date-picker-trigger svg {
+        color: #17866b;
+      }
+
+      html[data-theme="light"] .date-picker-popover {
+        border-color: rgba(67, 117, 91, 0.16);
+        background: rgba(250, 252, 250, 0.98);
+        color: #26332c;
+        box-shadow: 0 18px 48px rgba(45, 80, 57, 0.16), inset 0 1px #ffffff;
+      }
+
+      html[data-theme="light"] .calendar-nav-button {
+        color: #52665a;
+      }
+
+      html[data-theme="light"] .calendar-nav-button:hover,
+      html[data-theme="light"] .calendar-day:hover,
+      html[data-theme="light"] .calendar-today:hover {
+        background: rgba(23, 134, 107, 0.09);
+        color: #14785f;
+      }
+
+      html[data-theme="light"] .calendar-day {
+        color: #34443b;
+      }
+
+      html[data-theme="light"] .calendar-day[data-outside-month="true"] {
+        color: #a0aaa3;
+      }
+
+      html[data-theme="light"] .calendar-day[data-today="true"] {
+        border-color: rgba(23, 134, 107, 0.42);
+      }
+
+      html[data-theme="light"] .calendar-day[aria-pressed="true"] {
+        background: linear-gradient(135deg, #6fbd99, #4da981);
+        color: #102b1d;
+      }
+
+      html[data-theme="light"] .calendar-today {
+        color: #14785f;
+      }
+
+      html[data-theme="light"] #expense-list button[data-delete-id],
+      html[data-theme="light"] #history-list button[data-delete-id] {
+        background-color: rgba(177, 91, 91, 0.08);
+        color: #a45b5d;
+      }
+
+      html[data-theme="light"] #expense-list button[data-delete-id]:hover,
+      html[data-theme="light"] #history-list button[data-delete-id]:hover {
+        background-color: rgba(177, 91, 91, 0.14);
+      }
+
+      html[data-theme="light"] #expense-form input::placeholder,
+      html[data-theme="light"] #settings-form input::placeholder {
+        color: #8a958e;
+      }
+
+      html[data-theme="light"] #expense-form input:focus,
+      html[data-theme="light"] #expense-form select:focus,
+      html[data-theme="light"] #settings-form input:focus,
+      html[data-theme="light"] #history-month:focus {
+        border-color: rgba(23, 134, 107, 0.55);
+        background-color: #ffffff;
+        box-shadow: 0 0 0 3px rgba(23, 134, 107, 0.1);
+      }
+
+      html[data-theme="light"] nav[aria-label="Primary"] {
+        border-color: rgba(25, 38, 32, 0.1);
+        background: rgba(250, 252, 250, 0.88);
+        box-shadow: 0 8px 24px rgba(30, 50, 40, 0.08);
+      }
+
+      html[data-theme="light"] nav[aria-label="Primary"] .nav-btn.text-teal-300 {
+        color: #14785f;
+      }
+
+      html[data-theme="light"] nav[aria-label="Primary"] .nav-btn.text-zinc-400 {
+        color: #77837c;
+      }
+
+      html[data-theme="light"] nav[aria-label="Primary"] .nav-btn:hover {
+        background: rgba(23, 134, 107, 0.06);
+      }
+
+      html[data-theme="light"] #toast {
+        background: #173a2f;
+        color: #f0fff8;
+      }
+
+      #daily-card,
+      #budget-card,
+      #category-list > div,
+      #category-list > p,
+      #expense-list > li,
+      #history-list > li,
+      #expense-form,
+      #settings-form article,
+      #category-limits > div,
+      #month-label,
+      #theme-toggle,
+      #expense-form input,
+      #expense-form select,
+      #settings-form input,
+      #history-month,
+      nav[aria-label="Primary"] {
+        -webkit-backdrop-filter: blur(18px) saturate(135%);
+        backdrop-filter: blur(18px) saturate(135%);
+      }
+
+      #daily-card,
+      #budget-card,
+      #category-list > div,
+      #category-list > p,
+      #expense-list > li,
+      #history-list > li,
+      #expense-form,
+      #settings-form article,
+      #category-limits > div {
+        box-shadow:
+          inset 0 1px rgba(255, 255, 255, 0.22),
+          0 8px 24px rgba(16, 32, 24, 0.07);
+      }
+
+      html[data-theme="dark"] #daily-card {
+        background:
+          radial-gradient(ellipse at 100% 0%, rgba(72, 201, 167, 0.15), transparent 48%),
+          linear-gradient(145deg, rgba(28, 38, 35, 0.82), rgba(16, 17, 20, 0.78) 72%);
+      }
+
+      html[data-theme="dark"] #budget-card,
+      html[data-theme="dark"] #category-list > div,
+      html[data-theme="dark"] #category-list > p,
+      html[data-theme="dark"] #expense-list > li,
+      html[data-theme="dark"] #history-list > li,
+      html[data-theme="dark"] #expense-form,
+      html[data-theme="dark"] #settings-form article,
+      html[data-theme="dark"] #category-limits > div {
+        background: linear-gradient(145deg, rgba(29, 34, 32, 0.82), rgba(17, 18, 20, 0.76));
+      }
+
+      html[data-theme="dark"] #month-label,
+      html[data-theme="dark"] #theme-toggle,
+      html[data-theme="dark"] #expense-form input,
+      html[data-theme="dark"] #expense-form select,
+      html[data-theme="dark"] #settings-form input,
+      html[data-theme="dark"] #history-month {
+        background-color: rgba(15, 17, 17, 0.78);
+      }
+
+      html[data-theme="dark"] nav[aria-label="Primary"] {
+        background: rgba(13, 15, 15, 0.84);
+      }
+
+      html[data-theme="light"] #daily-card,
+      html[data-theme="light"] #budget-card,
+      html[data-theme="light"] #category-list > div,
+      html[data-theme="light"] #category-list > p,
+      html[data-theme="light"] #expense-list > li,
+      html[data-theme="light"] #history-list > li,
+      html[data-theme="light"] #expense-form,
+      html[data-theme="light"] #settings-form article,
+      html[data-theme="light"] #category-limits > div {
+        background: linear-gradient(145deg, rgba(248, 251, 248, 0.82), rgba(231, 241, 233, 0.72));
+        box-shadow:
+          inset 0 1px rgba(255, 255, 255, 0.82),
+          0 8px 24px rgba(45, 80, 57, 0.065);
+      }
+
+      html[data-theme="light"] #daily-card {
+        background:
+          radial-gradient(ellipse at 100% 0%, rgba(74, 190, 151, 0.17), transparent 48%),
+          linear-gradient(145deg, rgba(232, 244, 238, 0.85), rgba(255, 255, 255, 0.75) 78%);
+      }
+
+      html[data-theme="light"] #month-label,
+      html[data-theme="light"] #theme-toggle,
+      html[data-theme="light"] #expense-form input,
+      html[data-theme="light"] #expense-form select,
+      html[data-theme="light"] #settings-form input,
+      html[data-theme="light"] #history-month {
+        background-color: rgba(255, 255, 255, 0.72);
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.92), 0 3px 10px rgba(45, 80, 57, 0.035);
+      }
+
+      html[data-theme="light"] nav[aria-label="Primary"] {
+        background: rgba(250, 252, 250, 0.84);
+      }
+
+      #weekly-card,
+      #upcoming-summary,
+      #reports-card,
+      #planned-form,
+      #planned-list > li,
+      #savings-card,
+      #goal-list > li,
+      #goal-list > p,
+      #shared-card,
+      #shared-list > li,
+      #alerts-card,
+      #backup-card,
+      #goal-form input,
+      #shared-form input,
+      #planned-form input,
+      #planned-form select,
+      #backup-import {
+        -webkit-backdrop-filter: blur(18px) saturate(135%);
+        backdrop-filter: blur(18px) saturate(135%);
+      }
+
+      html[data-theme="dark"] #weekly-card,
+      html[data-theme="dark"] #upcoming-summary,
+      html[data-theme="dark"] #reports-card,
+      html[data-theme="dark"] #planned-form,
+      html[data-theme="dark"] #planned-list > li,
+      html[data-theme="dark"] #savings-card,
+      html[data-theme="dark"] #goal-list > li,
+      html[data-theme="dark"] #goal-list > p,
+      html[data-theme="dark"] #shared-card,
+      html[data-theme="dark"] #shared-list > li,
+      html[data-theme="dark"] #alerts-card,
+      html[data-theme="dark"] #backup-card {
+        border-color: rgba(255, 255, 255, 0.08);
+        background: linear-gradient(145deg, rgba(29, 34, 32, 0.82), rgba(17, 18, 20, 0.76));
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.16), 0 8px 24px rgba(0, 0, 0, 0.2);
+      }
+
+      html[data-theme="light"] #weekly-card,
+      html[data-theme="light"] #upcoming-summary,
+      html[data-theme="light"] #reports-card,
+      html[data-theme="light"] #planned-form,
+      html[data-theme="light"] #planned-list > li,
+      html[data-theme="light"] #savings-card,
+      html[data-theme="light"] #goal-list > li,
+      html[data-theme="light"] #goal-list > p,
+      html[data-theme="light"] #shared-card,
+      html[data-theme="light"] #shared-list > li,
+      html[data-theme="light"] #alerts-card,
+      html[data-theme="light"] #backup-card {
+        border-color: rgba(67, 117, 91, 0.13);
+        background: linear-gradient(145deg, rgba(248, 251, 248, 0.82), rgba(231, 241, 233, 0.72));
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.82), 0 8px 24px rgba(45, 80, 57, 0.065);
+      }
+
+      html[data-theme="light"] #weekly-card .text-white,
+      html[data-theme="light"] #upcoming-summary .text-white,
+      html[data-theme="light"] #reports-card .text-white,
+      html[data-theme="light"] #planned-list .text-white,
+      html[data-theme="light"] #goal-list .text-white,
+      html[data-theme="light"] #shared-list .text-white,
+      html[data-theme="light"] #savings-card h2,
+      html[data-theme="light"] #shared-card h2,
+      html[data-theme="light"] #alerts-card h2,
+      html[data-theme="light"] #backup-card h2 {
+        color: #263a2f;
+      }
+
+      html[data-theme="light"] #weekly-card .text-zinc-400,
+      html[data-theme="light"] #upcoming-summary .text-zinc-300,
+      html[data-theme="light"] #upcoming-summary .text-zinc-500,
+      html[data-theme="light"] #reports-card .text-zinc-400,
+      html[data-theme="light"] #reports-card .text-zinc-500,
+      html[data-theme="light"] #planned-list .text-zinc-500,
+      html[data-theme="light"] #goal-list .text-zinc-500,
+      html[data-theme="light"] #shared-list .text-zinc-500,
+      html[data-theme="light"] #shared-balances,
+      html[data-theme="light"] #notification-status,
+      html[data-theme="light"] #backup-card p {
+        color: #718078;
+      }
+
+      html[data-theme="light"] #reports-card .bg-ink-800\/50 {
+        border-color: rgba(67, 117, 91, 0.1);
+        background: rgba(235, 243, 237, 0.74);
+      }
+
+      html[data-theme="light"] #planned-form input,
+      html[data-theme="light"] #planned-form select,
+      html[data-theme="light"] #goal-form input,
+      html[data-theme="light"] #shared-form input {
+        border-color: rgba(67, 117, 91, 0.17);
+        background-color: rgba(255, 255, 255, 0.74);
+        color: #263a2f;
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.92), 0 3px 10px rgba(45, 80, 57, 0.035);
+      }
+
+      html[data-theme="light"] #planned-form label,
+      html[data-theme="light"] #goal-form label,
+      html[data-theme="light"] #shared-form label {
+        color: #42584a;
+      }
+
+      html[data-theme="light"] #backup-import {
+        color: #52665a;
+      }
+
+      html[data-theme="light"] #backup-import::file-selector-button {
+        margin-right: 0.75rem;
+        border: 1px solid rgba(67, 117, 91, 0.16);
+        border-radius: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(226, 238, 229, 0.78);
+        color: #395647;
+      }
+
+      html[data-theme="dark"] #backup-import::file-selector-button {
+        margin-right: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(29, 34, 32, 0.9);
+        color: #d4d4d8;
+      }
+
+      html[data-theme="dark"] #backup-import::file-selector-button:hover {
+        background: #292f2c;
+        color: #f4f4f5;
+      }
+
+      html[data-theme="light"] #alerts-card button,
+      html[data-theme="light"] #backup-card button {
+        border-color: rgba(67, 117, 91, 0.16);
+        background: rgba(226, 238, 229, 0.78);
+        color: #395647;
+      }
+
+      html[data-theme="light"] #budget-alert {
+        border-color: rgba(181, 132, 65, 0.2);
+        background: rgba(249, 239, 218, 0.85);
+        color: #765520;
+      }
+
+      html[data-theme="light"] #planned-list button[data-plan-paid],
+      html[data-theme="light"] #goal-list button[data-goal-contribute] {
+        background: rgba(104, 173, 136, 0.18);
+        color: #336c4c;
+      }
+
+      html[data-theme="light"] #planned-list button[data-plan-delete],
+      html[data-theme="light"] #goal-list button[data-goal-delete],
+      html[data-theme="light"] #shared-list button[data-shared-delete] {
+        background: rgba(177, 91, 91, 0.08);
+        color: #a45b5d;
+      }
+
+      html[data-theme="light"] #weekly-card .text-zinc-300,
+      html[data-theme="light"] #reports-card .text-zinc-300 {
+        color: #52665a;
+      }
+
+      html[data-theme="light"] #expense-list .text-white,
+      html[data-theme="light"] #history-list .text-white,
+      html[data-theme="light"] #planned-list .text-zinc-200,
+      html[data-theme="light"] #goal-list .text-zinc-200,
+      html[data-theme="light"] #shared-list .text-zinc-200 {
+        color: #263a2f;
+      }
+
+      html[data-theme="light"] #backup-card label {
+        color: #42584a;
+      }
+
+      html[data-theme="light"] #expense-list li span.bg-zinc-800,
+      html[data-theme="light"] #history-list li span.bg-zinc-800 {
+        background-color: #e2eee5;
+        color: #52665a;
+      }
+
+      html[data-theme="light"] #weekly-card .bg-zinc-800,
+      html[data-theme="light"] #goal-list .bg-zinc-800 {
+        background-color: #e4e9e5;
+      }
+
+      html[data-theme="light"] #budget-progress.bg-teal-400,
+      html[data-theme="light"] #weekly-progress.bg-teal-400,
+      html[data-theme="light"] #goal-list .bg-teal-400 {
+        background-color: #68ad88;
+      }
+
+      html[data-theme="light"] #budget-progress.bg-orange-400 {
+        background-color: #d2a05f;
+      }
+
+      html[data-theme="light"] #budget-progress.bg-rose-500 {
+        background-color: #d48283;
+      }
+
+      html[data-theme="light"] #goal-list input {
+        border-color: rgba(67, 117, 91, 0.17);
+        background-color: rgba(255, 255, 255, 0.74);
+        color: #263a2f;
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.92), 0 3px 10px rgba(45, 80, 57, 0.035);
+      }
+
+      html[data-theme="light"] #goal-list input::placeholder {
+        color: #8a958e;
+      }
+
+      html[data-theme="light"] #goal-list input:focus {
+        border-color: rgba(23, 134, 107, 0.55);
+        background-color: #ffffff;
+        box-shadow: 0 0 0 3px rgba(23, 134, 107, 0.1);
+      }
+    </style>
   </head>
   <body class="min-h-dvh bg-ink-950 text-zinc-100 antialiased">
-    <div class="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-[5.75rem] pt-[max(1rem,env(safe-area-inset-top))]">
-      <header class="mb-5 flex items-center justify-between">
+    <div id="app-shell" class="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))]">
+      <header id="app-header" class="mb-5 flex items-center justify-between">
         <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-400/80">HostelSpend</p>
           <h1 id="app-heading" class="text-xl font-semibold tracking-tight text-white">Dashboard</h1>
         </div>
-        <div class="rounded-full border border-white/10 bg-ink-800 px-3 py-1.5 text-xs font-medium text-zinc-300" id="month-label">
-          &mdash;
+        <div class="flex items-center gap-2">
+          <button
+            id="theme-toggle"
+            type="button"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-ink-800 text-zinc-300 transition hover:border-teal-400/40 hover:text-teal-200"
+            aria-label="Switch to light theme"
+            aria-pressed="false"
+            title="Switch to light theme"
+          >
+            <svg data-theme-icon="dark" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.9 13A8.5 8.5 0 0 1 11 3.1 8.5 8.5 0 1 0 20.9 13Z"></path>
+            </svg>
+            <svg data-theme-icon="light" class="hidden h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"></path>
+            </svg>
+          </button>
+          <div class="rounded-full border border-white/10 bg-ink-800 px-3 py-1.5 text-xs font-medium text-zinc-300" id="month-label">
+            &mdash;
+          </div>
         </div>
       </header>
+
+      <nav class="sticky top-0 z-20 -mx-1 mb-5 rounded-2xl border bg-ink-900/90 px-1 pb-1 backdrop-blur-md" aria-label="Primary">
+        <div class="mx-auto grid max-w-lg grid-cols-3 px-1 pt-1">
+          <button type="button" data-nav="dashboard" class="nav-btn flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-teal-300" aria-current="page">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-8.5Z" stroke-linejoin="round" />
+            </svg>
+            <span class="text-[11px] font-semibold">Dashboard</span>
+          </button>
+          <button type="button" data-nav="add" class="nav-btn flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-zinc-400">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8v8M8 12h8" stroke-linecap="round" />
+            </svg>
+            <span class="text-[11px] font-semibold">Add Expense</span>
+          </button>
+          <button type="button" data-nav="settings" class="nav-btn flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-zinc-400">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l.1.1a1.7 1.7 0 0 0 .3 1.8V9c.3.7.9 1.2 1.6 1.4H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+            </svg>
+            <span class="text-[11px] font-semibold">Limits</span>
+          </button>
+        </div>
+      </nav>
 
       <main class="flex-1 space-y-5">
         <section id="view-dashboard" data-view="dashboard" aria-labelledby="app-heading">
@@ -61,19 +1176,20 @@
             <p id="daily-allowable" class="mt-1 text-4xl font-bold tracking-tight text-white">&#8377;0</p>
             <div class="mt-3 flex flex-wrap items-center gap-2">
               <span id="daily-status" class="rounded-full bg-teal-400/15 px-2.5 py-1 text-xs font-semibold text-teal-200">
-                Set a monthly budget
+                Set a budget first
               </span>
-              <span id="days-left" class="text-xs text-zinc-400">&mdash; days left this month</span>
+              <span id="days-left" class="text-xs text-zinc-400">&mdash; days left in this cycle</span>
             </div>
             <p id="daily-hint" class="mt-3 text-sm leading-relaxed text-zinc-300">
               Daily allowable = remaining budget &divide; remaining days. Add a budget in Limits to start tracking.
             </p>
           </article>
+          <p id="budget-alert" class="mt-4 hidden rounded-2xl border border-orange-400/20 bg-orange-500/10 px-4 py-3 text-sm text-orange-200" role="status"></p>
 
-          <article class="mt-5 rounded-3xl border border-white/10 bg-ink-900 p-5">
+          <article id="budget-card" class="mt-5 rounded-3xl border border-white/10 bg-ink-900 p-5">
             <div class="flex items-end justify-between gap-3">
               <div>
-                <p class="text-sm text-zinc-400">This month</p>
+                <p class="text-sm text-zinc-400">This cycle</p>
                 <p class="mt-1 text-lg font-semibold text-white">
                   <span id="spent-total">&#8377;0</span>
                   <span class="text-zinc-500"> / </span>
@@ -87,6 +1203,27 @@
             </div>
           </article>
 
+          <article id="weekly-card" class="mt-5 rounded-3xl border border-white/10 bg-ink-900 p-5">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-sm text-zinc-400">This week</p>
+                <p id="weekly-spent" class="mt-1 text-lg font-semibold text-white">&#8377;0 spent</p>
+              </div>
+              <p id="weekly-target" class="text-sm font-medium text-zinc-300">Target &#8377;0</p>
+            </div>
+            <div class="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800">
+              <div id="weekly-progress" class="h-full w-0 rounded-full bg-teal-400 transition-all duration-300"></div>
+            </div>
+          </article>
+
+          <article id="upcoming-summary" class="mt-4 rounded-2xl border border-white/10 bg-ink-900/70 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-sm font-medium text-zinc-300">Upcoming planned costs</p>
+              <p id="upcoming-total" class="text-sm font-semibold text-white">&#8377;0</p>
+            </div>
+            <p id="spendable-total" class="mt-1 text-xs text-zinc-500">After planned costs: &#8377;0 available</p>
+          </article>
+
           <section class="mt-5" aria-labelledby="category-heading">
             <h2 id="category-heading" class="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-400">
               Category limits
@@ -98,16 +1235,56 @@
             </div>
           </section>
 
+          <section class="mt-6" aria-labelledby="reports-heading">
+            <h2 id="reports-heading" class="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-400">
+              Spending report
+            </h2>
+            <article id="reports-card" class="rounded-3xl border border-white/10 bg-ink-900 p-4">
+              <p id="cycle-comparison" class="text-sm text-zinc-400"></p>
+              <div class="mt-4 grid grid-cols-2 gap-3">
+                <div class="rounded-2xl border border-white/5 bg-ink-800/50 p-3">
+                  <p class="text-xs text-zinc-500">Needs</p>
+                  <p id="needs-total" class="mt-1 font-semibold text-white">&#8377;0</p>
+                </div>
+                <div class="rounded-2xl border border-white/5 bg-ink-800/50 p-3">
+                  <p class="text-xs text-zinc-500">Wants</p>
+                  <p id="wants-total" class="mt-1 font-semibold text-white">&#8377;0</p>
+                </div>
+              </div>
+              <h3 class="mt-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">By category</h3>
+              <ul id="report-category-list" class="mt-2 space-y-2"></ul>
+            </article>
+          </section>
+
           <section class="mt-6" aria-labelledby="recent-heading">
             <div class="mb-3 flex items-center justify-between">
               <h2 id="recent-heading" class="text-sm font-semibold uppercase tracking-wider text-zinc-400">
                 Recent expenses
               </h2>
-              <span class="text-xs text-zinc-500">This month</span>
+              <span class="text-xs text-zinc-500">This cycle</span>
             </div>
             <ul id="expense-list" class="space-y-2">
               <li class="rounded-2xl border border-dashed border-white/10 bg-ink-900 px-4 py-8 text-center text-sm text-zinc-500">
                 No expenses yet. Use Add Expense to log a UPI payment.
+              </li>
+            </ul>
+          </section>
+
+          <section class="mt-6" aria-labelledby="history-heading">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 id="history-heading" class="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+                Expense history
+              </h2>
+              <label for="history-month" class="sr-only">Choose a month</label>
+              <select
+                id="history-month"
+                class="rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-sm text-zinc-200 outline-none ring-teal-400/40 focus:ring"
+              ></select>
+            </div>
+            <p id="history-total" class="mb-3 text-sm text-zinc-400"></p>
+            <ul id="history-list" class="space-y-2">
+              <li class="rounded-2xl border border-dashed border-white/10 bg-ink-900 px-4 py-8 text-center text-sm text-zinc-500">
+                No previous expenses yet.
               </li>
             </ul>
           </section>
@@ -131,32 +1308,53 @@
             </div>
 
             <div>
-              <label for="category" class="mb-1.5 block text-sm font-medium text-zinc-300">Category</label>
-              <select
-                id="category"
-                name="category"
-                required
-                class="w-full appearance-none rounded-2xl border border-white/10 bg-ink-800 px-4 py-3 text-base text-white outline-none ring-teal-400/40 focus:border-teal-400/40 focus:ring"
-              >
-                <option value="" disabled selected>Select a category</option>
-                <option value="Food Outside">Food Outside</option>
-                <option value="Random Stuff">Random Stuff</option>
-                <option value="Online Shopping">Online Shopping</option>
-                <option value="Laundry">Laundry</option>
-                <option value="Transport">Transport</option>
-                <option value="Utilities">Utilities</option>
-              </select>
+              <label for="category-select-trigger" class="mb-1.5 block text-sm font-medium text-zinc-300">Category</label>
+              <div class="custom-select" data-custom-select>
+                <select id="category" name="category" required class="custom-select-native" aria-hidden="true" tabindex="-1">
+                  <option value="" disabled selected>Select a category</option>
+                  <option value="Food Outside">Food Outside</option>
+                  <option value="Random Stuff">Random Stuff</option>
+                  <option value="Online Shopping">Online Shopping</option>
+                  <option value="Laundry">Laundry</option>
+                  <option value="Transport">Transport</option>
+                  <option value="Utilities">Utilities</option>
+                </select>
+                <button id="category-select-trigger" type="button" class="custom-select-trigger text-base" data-custom-select-trigger role="combobox" aria-haspopup="listbox" aria-expanded="false">
+                  <span data-custom-select-value>Select a category</span>
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+                </button>
+                <div class="custom-select-listbox" data-custom-select-listbox role="listbox" aria-labelledby="category-select-trigger" hidden></div>
+              </div>
             </div>
 
             <div>
-              <label for="date" class="mb-1.5 block text-sm font-medium text-zinc-300">Date</label>
-              <input
-                id="date"
-                name="date"
-                type="date"
-                required
-                class="w-full rounded-2xl border border-white/10 bg-ink-800 px-4 py-3 text-base text-white outline-none ring-teal-400/40 focus:border-teal-400/40 focus:ring [color-scheme:dark]"
-              />
+              <label for="expense-kind-select-trigger" class="mb-1.5 block text-sm font-medium text-zinc-300">Spending type</label>
+              <div class="custom-select" data-custom-select>
+                <select id="expense-kind" name="expenseKind" required class="custom-select-native" aria-hidden="true" tabindex="-1">
+                  <option value="need">Need</option>
+                  <option value="want">Want</option>
+                </select>
+                <button id="expense-kind-select-trigger" type="button" class="custom-select-trigger text-base" data-custom-select-trigger role="combobox" aria-haspopup="listbox" aria-expanded="false">
+                  <span data-custom-select-value></span>
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+                </button>
+                <div class="custom-select-listbox" data-custom-select-listbox role="listbox" aria-labelledby="expense-kind-select-trigger" hidden></div>
+              </div>
+            </div>
+
+            <div>
+              <label for="date-picker-trigger" class="mb-1.5 block text-sm font-medium text-zinc-300">Date</label>
+              <div class="date-picker relative" data-date-picker>
+                <input id="date" name="date" type="hidden" required />
+                <button id="date-picker-trigger" type="button" class="date-picker-trigger" data-date-picker-trigger aria-haspopup="dialog" aria-expanded="false">
+                  <span data-date-picker-value></span>
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                    <path d="M16 3v4M8 3v4M3 10h18" />
+                  </svg>
+                </button>
+                <div class="date-picker-popover" data-date-picker-popover role="dialog" aria-label="Choose expense date" hidden></div>
+              </div>
             </div>
 
             <div>
@@ -180,13 +1378,75 @@
               Save expense
             </button>
           </form>
+
+          <section class="mt-6" aria-labelledby="planned-heading">
+            <h2 id="planned-heading" class="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-400">
+              Planned & recurring expenses
+            </h2>
+            <form id="planned-form" class="space-y-3 rounded-3xl border border-white/10 bg-ink-900 p-5">
+              <div>
+                <label for="planned-title" class="mb-1.5 block text-sm font-medium text-zinc-300">Expense name</label>
+                <input id="planned-title" name="title" type="text" maxlength="60" required placeholder="Rent, mess fee, subscription" class="w-full rounded-2xl border border-white/10 bg-ink-800 px-4 py-3 text-base text-white outline-none focus:ring" />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="planned-amount" class="mb-1.5 block text-sm font-medium text-zinc-300">Amount (&#8377;)</label>
+                  <input id="planned-amount" name="amount" type="number" min="0.01" step="0.01" required inputmode="decimal" placeholder="0.00" class="w-full rounded-2xl border border-white/10 bg-ink-800 px-3 py-3 text-base text-white outline-none focus:ring" />
+                </div>
+                <div>
+                  <label for="planned-date-picker-trigger" class="mb-1.5 block text-sm font-medium text-zinc-300">Due date</label>
+                  <div class="date-picker relative" data-date-picker>
+                    <input id="planned-date" name="dueDate" type="hidden" required />
+                    <button id="planned-date-picker-trigger" type="button" class="date-picker-trigger px-3" data-date-picker-trigger aria-haspopup="dialog" aria-expanded="false">
+                      <span class="truncate" data-date-picker-value></span>
+                      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="5" width="18" height="16" rx="2" />
+                        <path d="M16 3v4M8 3v4M3 10h18" />
+                      </svg>
+                    </button>
+                    <div class="date-picker-popover" data-date-picker-popover role="dialog" aria-label="Choose due date" hidden></div>
+                  </div>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="planned-category-select-trigger" class="mb-1.5 block text-sm font-medium text-zinc-300">Category</label>
+                  <div class="custom-select" data-custom-select>
+                    <select id="planned-category" name="category" required class="custom-select-native" aria-hidden="true" tabindex="-1"></select>
+                    <button id="planned-category-select-trigger" type="button" class="custom-select-trigger px-3 text-sm" data-custom-select-trigger role="combobox" aria-haspopup="listbox" aria-expanded="false">
+                      <span class="truncate" data-custom-select-value></span>
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+                    </button>
+                    <div class="custom-select-listbox" data-custom-select-listbox role="listbox" aria-labelledby="planned-category-select-trigger" hidden></div>
+                  </div>
+                </div>
+                <div>
+                  <label for="planned-frequency-select-trigger" class="mb-1.5 block text-sm font-medium text-zinc-300">Repeat</label>
+                  <div class="custom-select" data-custom-select>
+                    <select id="planned-frequency" name="frequency" class="custom-select-native" aria-hidden="true" tabindex="-1">
+                      <option value="none">Does not repeat</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                    <button id="planned-frequency-select-trigger" type="button" class="custom-select-trigger px-3 text-sm" data-custom-select-trigger role="combobox" aria-haspopup="listbox" aria-expanded="false">
+                      <span class="truncate" data-custom-select-value></span>
+                      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+                    </button>
+                    <div class="custom-select-listbox" data-custom-select-listbox role="listbox" aria-labelledby="planned-frequency-select-trigger" hidden></div>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="w-full rounded-2xl bg-teal-500 px-4 py-3 font-semibold text-teal-950">Add planned expense</button>
+            </form>
+            <ul id="planned-list" class="mt-3 space-y-2"></ul>
+          </section>
         </section>
 
         <section id="view-settings" data-view="settings" class="hidden" aria-labelledby="app-heading">
           <form id="settings-form" class="space-y-5" novalidate>
             <article class="rounded-3xl border border-white/10 bg-ink-900 p-5">
-              <h2 class="text-base font-semibold text-white">Monthly budget</h2>
-              <p class="mt-1 text-sm text-zinc-400">Total UPI / cash cap for the current calendar month.</p>
+              <h2 class="text-base font-semibold text-white">30-day budget</h2>
+              <p class="mt-1 text-sm text-zinc-400">Total UPI / cash cap for each 30-day budget cycle.</p>
               <label for="monthly-budget" class="mt-4 mb-1.5 block text-sm font-medium text-zinc-300">Amount (&#8377;)</label>
               <input
                 id="monthly-budget"
@@ -217,11 +1477,71 @@
               Save limits
             </button>
           </form>
+
+          <section class="mt-6 space-y-4">
+            <article id="savings-card" class="rounded-3xl border border-white/10 bg-ink-900 p-5">
+              <h2 class="text-base font-semibold text-white">Savings goals</h2>
+              <p class="mt-1 text-sm text-zinc-400">Track progress toward something you want to save for.</p>
+              <form id="goal-form" class="mt-4 grid grid-cols-2 gap-3">
+                <label class="col-span-2 text-sm font-medium text-zinc-300" for="goal-title">Goal name</label>
+                <input id="goal-title" name="title" type="text" maxlength="60" required placeholder="New laptop" class="col-span-2 rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-white" />
+                <label class="col-span-2 text-sm font-medium text-zinc-300" for="goal-target">Target (&#8377;)</label>
+                <input id="goal-target" name="target" type="number" min="1" step="0.01" required placeholder="25000" class="col-span-2 rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-white" />
+                <button type="submit" class="col-span-2 rounded-xl bg-teal-500 px-4 py-3 font-semibold text-teal-950">Add savings goal</button>
+              </form>
+              <ul id="goal-list" class="mt-4 space-y-3"></ul>
+            </article>
+
+            <article id="shared-card" class="rounded-3xl border border-white/10 bg-ink-900 p-5">
+              <h2 class="text-base font-semibold text-white">Shared expenses</h2>
+              <p class="mt-1 text-sm text-zinc-400">Split costs and see who owes whom. This stays on this device and does not sync.</p>
+              <form id="shared-form" class="mt-4 space-y-3">
+                <div>
+                  <label for="shared-title" class="mb-1.5 block text-sm font-medium text-zinc-300">Expense name</label>
+                  <input id="shared-title" name="title" type="text" maxlength="60" required placeholder="Groceries" class="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-white" />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label for="shared-amount" class="mb-1.5 block text-sm font-medium text-zinc-300">Total (&#8377;)</label>
+                    <input id="shared-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="600" class="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-white" />
+                  </div>
+                  <div>
+                    <label for="shared-payer" class="mb-1.5 block text-sm font-medium text-zinc-300">Paid by</label>
+                    <input id="shared-payer" name="payer" type="text" maxlength="40" required placeholder="Your name" class="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <label for="shared-people" class="mb-1.5 block text-sm font-medium text-zinc-300">People sharing (comma-separated)</label>
+                  <input id="shared-people" name="people" type="text" maxlength="240" required placeholder="Your name, Friend 1, Friend 2" class="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2.5 text-white" />
+                </div>
+                <button type="submit" class="w-full rounded-xl bg-teal-500 px-4 py-3 font-semibold text-teal-950">Add shared expense</button>
+              </form>
+              <p id="shared-balances" class="mt-4 text-sm text-zinc-300"></p>
+              <ul id="shared-list" class="mt-3 space-y-2"></ul>
+            </article>
+
+            <article id="alerts-card" class="rounded-3xl border border-white/10 bg-ink-900 p-5">
+              <h2 class="text-base font-semibold text-white">Low-balance alerts</h2>
+              <p id="notification-status" class="mt-1 text-sm text-zinc-400">In-app warnings are always on.</p>
+              <button id="notification-enable" type="button" class="mt-3 rounded-xl border border-white/10 bg-ink-800 px-4 py-2.5 text-sm font-semibold text-zinc-200">Enable device notifications</button>
+            </article>
+
+            <article id="backup-card" class="rounded-3xl border border-white/10 bg-ink-900 p-5">
+              <h2 class="text-base font-semibold text-white">Reports & data backup</h2>
+              <p class="mt-1 text-sm text-zinc-400">Download a spreadsheet or JSON backup. Import merges records and keeps existing settings.</p>
+              <div class="mt-4 grid grid-cols-2 gap-3">
+                <button type="button" data-export="csv" class="rounded-xl border border-white/10 bg-ink-800 px-3 py-3 text-sm font-semibold text-zinc-200">Export CSV</button>
+                <button type="button" data-export="json" class="rounded-xl border border-white/10 bg-ink-800 px-3 py-3 text-sm font-semibold text-zinc-200">Export JSON</button>
+              </div>
+              <label for="backup-import" class="mt-4 block text-sm font-medium text-zinc-300">Restore / merge JSON backup</label>
+              <input id="backup-import" type="file" accept="application/json,.json" class="mt-2 block w-full text-sm text-zinc-300" />
+            </article>
+          </section>
         </section>
       </main>
     </div>
 
-    <nav
+    <nav hidden
       class="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-ink-900/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md"
       aria-label="Primary"
     >
@@ -249,7 +1569,7 @@
       </div>
     </nav>
 
-    <p id="toast" class="pointer-events-none fixed bottom-24 left-1/2 z-30 hidden -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-900 shadow-lg" role="status"></p>
+    <p id="toast" class="pointer-events-none fixed bottom-24 left-1/2 z-30 hidden -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-900 shadow-lg sm:bottom-24" role="status"></p>
     <script src="./js/app.js" defer></script>
   </body>
 </html>

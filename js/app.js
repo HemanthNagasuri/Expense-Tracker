@@ -1,6 +1,9 @@
 // --- STATE MANAGEMENT ---
 const DEFAULT_CATEGORIES = ["Food Outside", "Random Stuff", "Online Shopping", "Laundry", "Transport", "Utilities"];
 const THEME_STORAGE_KEY = "hostelSpend_theme";
+const APP_PIN_STORAGE_KEY = "hostelSpend_pin";
+const APP_PIN_ITERATIONS = 310000;
+const RECOVERY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
 const initialTheme = savedTheme === "light" ? "light" : "dark";
 document.documentElement.dataset.theme = initialTheme;
@@ -54,7 +57,7 @@ let effectiveBudget = baseMonthlyBudget + rolloverAmount;
 
 // --- DOM ELEMENTS ---
 const views = document.querySelectorAll("section[data-view]");
-const navBtns = document.querySelectorAll("#app-shell nav .nav-btn");
+const navBtns = document.querySelectorAll("nav[aria-label='Primary'] .nav-btn");
 const appHeading = document.getElementById("app-heading");
 const monthLabel = document.getElementById("month-label");
 const themeToggleEl = document.getElementById("theme-toggle");
@@ -97,6 +100,32 @@ const expenseForm = document.getElementById("expense-form");
 const settingsForm = document.getElementById("settings-form");
 const dateInput = document.getElementById("date");
 const categoryLimitsContainer = document.getElementById("category-limits");
+const pinDialog = document.getElementById("pin-dialog");
+const pinForm = document.getElementById("pin-form");
+const pinInput = document.getElementById("app-pin");
+const pinConfirmWrap = document.getElementById("pin-confirm-wrap");
+const pinConfirmInput = document.getElementById("app-pin-confirm");
+const pinTitle = document.getElementById("pin-dialog-title");
+const pinDescription = document.getElementById("pin-dialog-description");
+const pinLabel = document.getElementById("pin-label");
+const pinError = document.getElementById("pin-error");
+const pinCancelButton = document.getElementById("pin-cancel");
+const pinSubmitButton = document.getElementById("pin-submit");
+const pinForgotButton = document.getElementById("pin-forgot");
+const recoveryDialog = document.getElementById("recovery-dialog");
+const recoveryCodeEl = document.getElementById("recovery-code");
+const recoverySavedButton = document.getElementById("recovery-saved");
+const copyRecoveryCodeButton = document.getElementById("copy-recovery-code");
+const changePinButton = document.getElementById("change-pin-button");
+const VALID_VIEWS = new Set(["dashboard", "add", "settings"]);
+let currentView = "dashboard";
+let pinRequestMode = null;
+let pinRequestPromise = null;
+let resolvePinRequest = null;
+let pinVerificationPending = false;
+let expenseMutationPending = false;
+let recoveryCodePending = null;
+let resolveRecoveryCode = null;
 
 function parseLocalDate(dateString) {
   const [year, month, day] = dateString.split("-").map(Number);
@@ -452,6 +481,269 @@ themeToggleEl.addEventListener("click", () => {
   setTheme(nextTheme);
 });
 
+function bytesToBase64(bytes) {
+  return btoa(String.fromCharCode(...bytes));
+}
+
+function base64ToBytes(value) {
+  return Uint8Array.from(atob(value), character => character.charCodeAt(0));
+}
+
+async function derivePinHash(pin, salt) {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("Secure PIN verification is not available in this browser context.");
+  }
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(pin),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits({
+    name: "PBKDF2",
+    salt,
+    iterations: APP_PIN_ITERATIONS,
+    hash: "SHA-256"
+  }, key, 256);
+  return new Uint8Array(bits);
+}
+
+function equalBytes(left, right) {
+  let difference = left.length ^ right.length;
+  for (let index = 0; index < Math.min(left.length, right.length); index++) {
+    difference |= left[index] ^ right[index];
+  }
+  return difference === 0;
+}
+
+async function createRecoveryCredential() {
+  const randomBytes = crypto.getRandomValues(new Uint8Array(20));
+  const normalizedCode = Array.from(randomBytes, byte => RECOVERY_CODE_ALPHABET[byte & 31]).join("");
+  const recoveryCode = normalizedCode.match(/.{4}/g).join("-");
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await derivePinHash(normalizedCode, salt);
+  return {
+    recoveryCode,
+    recoverySalt: bytesToBase64(salt),
+    recoveryHash: bytesToBase64(hash)
+  };
+}
+
+function presentRecoveryCode(code) {
+  recoveryCodePending = code;
+  recoveryCodeEl.textContent = code;
+  return new Promise(resolve => {
+    resolveRecoveryCode = resolve;
+    try {
+      recoveryDialog.showModal();
+    } catch (error) {
+      console.error("Could not display the recovery code.", error);
+      recoveryCodePending = null;
+      resolveRecoveryCode = null;
+      resolve(false);
+    }
+  });
+}
+
+function finishRecoveryCode() {
+  const resolve = resolveRecoveryCode;
+  resolveRecoveryCode = null;
+  recoveryCodePending = null;
+  if (recoveryDialog.open) recoveryDialog.close();
+  resolve?.(true);
+}
+
+function finishPinRequest(authenticated) {
+  const resolve = resolvePinRequest;
+  resolvePinRequest = null;
+  pinRequestPromise = null;
+  pinRequestMode = null;
+  pinVerificationPending = false;
+  pinSubmitButton.disabled = false;
+  pinCancelButton.disabled = false;
+  if (pinDialog.open) pinDialog.close();
+  resolve?.(authenticated);
+}
+
+function configurePinPrompt(mode) {
+  pinRequestMode = mode;
+  const isSetup = mode === "setup" || mode === "resetSetup";
+  const isRecovery = mode === "recovery";
+  pinTitle.textContent = isSetup
+    ? mode === "setup" ? "Create an app PIN" : "Choose a new app PIN"
+    : isRecovery ? "Reset your app PIN" : "Verify your app PIN";
+  pinDescription.textContent = isSetup
+    ? "Set a 4–12 digit PIN. You’ll enter it before adding or deleting expenses."
+    : isRecovery
+      ? "Enter the recovery code you saved to choose a new app PIN."
+      : mode === "change"
+        ? "Enter your current PIN to choose a new one."
+        : "Enter your app PIN to continue with this expense action.";
+  pinLabel.textContent = isSetup ? "New PIN" : isRecovery ? "Recovery code" : "PIN";
+  pinInput.type = isRecovery ? "text" : "password";
+  pinInput.inputMode = isRecovery ? "text" : "numeric";
+  pinInput.autocomplete = isSetup ? "new-password" : isRecovery ? "off" : "current-password";
+  pinInput.autocapitalize = isRecovery ? "characters" : "off";
+  pinInput.minLength = 0;
+  pinInput.maxLength = isRecovery ? 24 : 12;
+  pinInput.minLength = isRecovery ? 20 : 4;
+  if (isRecovery) pinInput.pattern = "[A-HJ-NP-Z2-9]{4}(?:-[A-HJ-NP-Z2-9]{4}){4}";
+  else pinInput.pattern = "[0-9]{4,12}";
+  pinConfirmWrap.classList.toggle("hidden", !isSetup);
+  pinConfirmInput.required = isSetup;
+  pinForgotButton.classList.toggle("hidden", !(mode === "verify" || mode === "change"));
+  pinCancelButton.classList.toggle("hidden", mode === "setup");
+  pinSubmitButton.textContent = isSetup ? "Save PIN" : isRecovery ? "Continue" : "Verify PIN";
+  pinSubmitButton.disabled = false;
+  pinCancelButton.disabled = false;
+  pinVerificationPending = false;
+  pinInput.value = "";
+  pinConfirmInput.value = "";
+  pinError.textContent = "";
+  pinError.classList.add("hidden");
+}
+
+function requestAppPin(mode) {
+  if (pinRequestPromise) return pinRequestPromise;
+
+  const savedPin = localStorage.getItem(APP_PIN_STORAGE_KEY);
+  const initialMode = mode === "setup" || !savedPin ? "setup" : mode;
+  configurePinPrompt(initialMode);
+
+  pinRequestPromise = new Promise(resolve => {
+    resolvePinRequest = resolve;
+  });
+  const request = pinRequestPromise;
+  try {
+    pinDialog.showModal();
+    pinInput.focus();
+  } catch (error) {
+    console.error("Could not open the app PIN prompt.", error);
+    finishPinRequest(false);
+    showToast("Could not open PIN verification. No expense was changed.");
+  }
+  return request;
+}
+
+pinForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  if (pinVerificationPending) return;
+  pinVerificationPending = true;
+  pinSubmitButton.disabled = true;
+  pinCancelButton.disabled = true;
+  const pin = pinInput.value;
+  const isSetup = pinRequestMode === "setup";
+  const isSettingUp = isSetup || pinRequestMode === "resetSetup";
+  if (isSettingUp && pin !== pinConfirmInput.value) {
+    pinVerificationPending = false;
+    pinSubmitButton.disabled = false;
+    pinCancelButton.disabled = false;
+    pinError.textContent = "The PINs do not match.";
+    pinError.classList.remove("hidden");
+    pinConfirmInput.focus();
+    return;
+  }
+
+  try {
+    if (isSettingUp) {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const hash = await derivePinHash(pin, salt);
+      const recovery = await createRecoveryCredential();
+      localStorage.setItem(APP_PIN_STORAGE_KEY, JSON.stringify({
+        salt: bytesToBase64(salt),
+        hash: bytesToBase64(hash),
+        iterations: APP_PIN_ITERATIONS,
+        recoverySalt: recovery.recoverySalt,
+        recoveryHash: recovery.recoveryHash
+      }));
+      pinDialog.close();
+      await presentRecoveryCode(recovery.recoveryCode);
+      finishPinRequest(true);
+      return;
+    }
+
+    const stored = JSON.parse(localStorage.getItem(APP_PIN_STORAGE_KEY));
+    if (!stored || stored.iterations !== APP_PIN_ITERATIONS) {
+      throw new Error("The saved app PIN data is missing or invalid.");
+    }
+    const isRecovery = pinRequestMode === "recovery";
+    const saltValue = isRecovery ? stored.recoverySalt : stored.salt;
+    const hashValue = isRecovery ? stored.recoveryHash : stored.hash;
+    if (typeof saltValue !== "string" || typeof hashValue !== "string") {
+      throw new Error("The saved app verification data is missing or invalid.");
+    }
+    const normalizedValue = isRecovery ? pin.toUpperCase().replace(/-/g, "") : pin;
+    const actualHash = await derivePinHash(normalizedValue, base64ToBytes(saltValue));
+    const expectedHash = base64ToBytes(hashValue);
+    if (!equalBytes(actualHash, expectedHash)) {
+      pinError.textContent = isRecovery
+        ? "That recovery code is incorrect. Try again."
+        : "That PIN is incorrect. Try again.";
+      pinError.classList.remove("hidden");
+      pinInput.value = "";
+      pinInput.focus();
+      pinVerificationPending = false;
+      pinSubmitButton.disabled = false;
+      pinCancelButton.disabled = false;
+      return;
+    }
+    if (pinRequestMode === "recovery" || pinRequestMode === "change") {
+      configurePinPrompt("resetSetup");
+      return;
+    }
+    finishPinRequest(true);
+  } catch (error) {
+    console.error("App PIN verification failed.", error);
+    pinError.textContent = "PIN verification failed. This action was not completed.";
+    pinError.classList.remove("hidden");
+    pinVerificationPending = false;
+    pinSubmitButton.disabled = false;
+    pinCancelButton.disabled = false;
+  }
+});
+
+pinCancelButton.addEventListener("click", () => finishPinRequest(false));
+pinForgotButton.addEventListener("click", () => configurePinPrompt("recovery"));
+pinDialog.addEventListener("cancel", event => {
+  event.preventDefault();
+  if (!pinVerificationPending && pinRequestMode !== "setup") finishPinRequest(false);
+});
+
+recoverySavedButton.addEventListener("click", finishRecoveryCode);
+copyRecoveryCodeButton.addEventListener("click", async () => {
+  if (!recoveryCodePending) return;
+  try {
+    await navigator.clipboard.writeText(recoveryCodePending);
+    showToast("Recovery code copied.");
+  } catch (error) {
+    console.error("Could not copy the recovery code.", error);
+    showToast("Copy failed. Select the code and copy it manually.");
+  }
+});
+recoveryDialog.addEventListener("cancel", event => event.preventDefault());
+changePinButton.addEventListener("click", () => requestAppPin("change"));
+
+async function addRecoveryCodeIfMissing() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(APP_PIN_STORAGE_KEY));
+    if (!stored) return;
+    if (stored.recoverySalt && stored.recoveryHash) return;
+    if (stored.iterations !== APP_PIN_ITERATIONS ||
+        typeof stored.salt !== "string" || typeof stored.hash !== "string") {
+      throw new Error("The saved app PIN data is missing or invalid.");
+    }
+    const recovery = await createRecoveryCredential();
+    stored.recoverySalt = recovery.recoverySalt;
+    stored.recoveryHash = recovery.recoveryHash;
+    localStorage.setItem(APP_PIN_STORAGE_KEY, JSON.stringify(stored));
+    await presentRecoveryCode(recovery.recoveryCode);
+  } catch (error) {
+    console.error("Could not create an app PIN recovery code.", error);
+    showToast("Could not create a recovery code. Try reloading the app.");
+  }
+}
+
 // --- INITIALIZATION ---
 function init() {
   dateInput.value = todayStr;
@@ -462,43 +754,62 @@ function init() {
   initializeCustomSelects();
   initializeDatePickers();
   buildCategoryLimitInputs();
-  updateDashboard();
   renderPlannedExpenses();
   renderSavingsGoals();
   renderSharedExpenses();
   updateNotificationStatus();
+  history.replaceState({ ...(history.state || {}), hostelSpendView: "dashboard" }, "", location.href);
+  showView("dashboard");
+  if (!localStorage.getItem(APP_PIN_STORAGE_KEY)) {
+    requestAppPin("setup");
+  } else {
+    addRecoveryCodeIfMissing();
+  }
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./service-worker.js").catch(err => console.error(err));
   }
 }
 
 // --- NAVIGATION ---
+function showView(targetView) {
+  if (!VALID_VIEWS.has(targetView)) return;
+  currentView = targetView;
+
+  navBtns.forEach(btn => {
+    const active = btn.dataset.nav === targetView;
+    btn.classList.toggle("text-teal-300", active);
+    btn.classList.toggle("text-zinc-400", !active);
+    if (active) btn.setAttribute("aria-current", "page");
+    else btn.removeAttribute("aria-current");
+  });
+
+  views.forEach(view => view.classList.toggle("hidden", view.dataset.view !== targetView));
+
+  if (targetView === "dashboard") {
+    appHeading.textContent = "Dashboard";
+    updateDashboard();
+  } else if (targetView === "add") {
+    appHeading.textContent = "Add Expense";
+  } else {
+    appHeading.textContent = "Limits & Budget";
+    document.getElementById("monthly-budget").value = baseMonthlyBudget || "";
+  }
+}
+
 navBtns.forEach(btn => {
   btn.addEventListener("click", () => {
     const targetView = btn.dataset.nav;
-    
-    navBtns.forEach(b => {
-      b.classList.remove("text-teal-300");
-      b.classList.add("text-zinc-400");
-    });
-    btn.classList.remove("text-zinc-400");
-    btn.classList.add("text-teal-300");
-
-    views.forEach(view => {
-      if (view.dataset.view === targetView) view.classList.remove("hidden");
-      else view.classList.add("hidden");
-    });
-
-    if (targetView === "dashboard") {
-      appHeading.textContent = "Dashboard";
-      updateDashboard();
-    } else if (targetView === "add") {
-      appHeading.textContent = "Add Expense";
-    } else if (targetView === "settings") {
-      appHeading.textContent = "Limits & Budget";
-      document.getElementById("monthly-budget").value = baseMonthlyBudget || "";
-    }
+    if (!VALID_VIEWS.has(targetView) || targetView === currentView) return;
+    history.pushState({ ...(history.state || {}), hostelSpendView: targetView }, "", location.href);
+    showView(targetView);
   });
+});
+
+window.addEventListener("popstate", event => {
+  const targetView = VALID_VIEWS.has(event.state?.hostelSpendView)
+    ? event.state.hostelSpendView
+    : "dashboard";
+  showView(targetView);
 });
 
 // --- CORE LOGIC & UI UPDATES ---
@@ -1028,9 +1339,10 @@ function showToast(msg) {
 }
 
 // --- EVENT LISTENERS ---
-expenseForm.addEventListener("submit", (e) => {
+expenseForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  
+  if (expenseMutationPending) return;
+
   const amount = parseFloat(document.getElementById("amount").value);
   const category = document.getElementById("category").value;
   const date = document.getElementById("date").value;
@@ -1039,26 +1351,33 @@ expenseForm.addEventListener("submit", (e) => {
 
   if (!Number.isFinite(amount) || amount <= 0 || !category || !date) return;
 
-  expenses.push({
-    id: createId(),
-    amount,
-    category,
-    date,
-    kind,
-    note
-  });
-  localStorage.setItem("hostelSpend_expenses", JSON.stringify(expenses));
-  
-  showToast("Expense added successfully!");
-  
-  document.getElementById("amount").value = "";
-  document.getElementById("category").value = "";
-  document.getElementById("expense-kind").value = "need";
-  syncCustomSelect(document.getElementById("category"));
-  syncCustomSelect(document.getElementById("expense-kind"));
-  document.getElementById("note").value = "";
-  
-  updateDashboard();
+  expenseMutationPending = true;
+  try {
+    if (!(await requestAppPin("verify"))) return;
+
+    expenses.push({
+      id: createId(),
+      amount,
+      category,
+      date,
+      kind,
+      note
+    });
+    localStorage.setItem("hostelSpend_expenses", JSON.stringify(expenses));
+
+    showToast("Expense added successfully!");
+
+    document.getElementById("amount").value = "";
+    document.getElementById("category").value = "";
+    document.getElementById("expense-kind").value = "need";
+    syncCustomSelect(document.getElementById("category"));
+    syncCustomSelect(document.getElementById("expense-kind"));
+    document.getElementById("note").value = "";
+
+    updateDashboard();
+  } finally {
+    expenseMutationPending = false;
+  }
 });
 
 plannedForm.addEventListener("submit", (e) => {
@@ -1300,16 +1619,23 @@ historyMonthEl.addEventListener("change", () => {
   renderExpenseHistory(cycleStartDay);
 });
 
-function handleExpenseDelete(e) {
+async function handleExpenseDelete(e) {
   const deleteBtn = e.target.closest("button[data-delete-id]");
-  if (!deleteBtn) return;
+  if (!deleteBtn || expenseMutationPending) return;
 
   const idToDelete = deleteBtn.dataset.deleteId;
-  if (confirm("Are you sure you want to delete this expense?")) {
+  expenseMutationPending = true;
+  try {
+    if (!(await requestAppPin("verify"))) return;
+    if (!expenses.some(exp => exp.id === idToDelete)) return;
+    if (!confirm("Are you sure you want to delete this expense?")) return;
+
     expenses = expenses.filter(exp => exp.id !== idToDelete);
     localStorage.setItem("hostelSpend_expenses", JSON.stringify(expenses));
     showToast("Expense deleted!");
     updateDashboard();
+  } finally {
+    expenseMutationPending = false;
   }
 }
 

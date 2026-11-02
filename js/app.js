@@ -101,6 +101,7 @@ const settingsForm = document.getElementById("settings-form");
 const dateInput = document.getElementById("date");
 const categoryLimitsContainer = document.getElementById("category-limits");
 const pinDialog = document.getElementById("pin-dialog");
+const appShell = document.getElementById("app-shell");
 const pinForm = document.getElementById("pin-form");
 const pinInput = document.getElementById("app-pin");
 const pinConfirmWrap = document.getElementById("pin-confirm-wrap");
@@ -126,6 +127,8 @@ let pinVerificationPending = false;
 let expenseMutationPending = false;
 let recoveryCodePending = null;
 let resolveRecoveryCode = null;
+let unlockRequired = false;
+let appUnlocked = false;
 
 function parseLocalDate(dateString) {
   const [year, month, day] = dateString.split("-").map(Number);
@@ -563,6 +566,11 @@ function finishPinRequest(authenticated) {
   pinSubmitButton.disabled = false;
   pinCancelButton.disabled = false;
   if (pinDialog.open) pinDialog.close();
+  if (authenticated) appUnlocked = true;
+  if (authenticated && unlockRequired) {
+    appShell.inert = false;
+    unlockRequired = false;
+  }
   resolve?.(authenticated);
 }
 
@@ -572,13 +580,15 @@ function configurePinPrompt(mode) {
   const isRecovery = mode === "recovery";
   pinTitle.textContent = isSetup
     ? mode === "setup" ? "Create an app PIN" : "Choose a new app PIN"
-    : isRecovery ? "Reset your app PIN" : "Verify your app PIN";
+    : isRecovery ? "Reset your app PIN" : mode === "unlock" ? "Unlock HostelSpend" : "Verify your app PIN";
   pinDescription.textContent = isSetup
     ? "Set a 4–12 digit PIN. You’ll enter it before adding or deleting expenses."
     : isRecovery
       ? "Enter the recovery code you saved to choose a new app PIN."
       : mode === "change"
         ? "Enter your current PIN to choose a new one."
+      : mode === "unlock"
+        ? "Enter your app PIN to unlock the app."
         : "Enter your app PIN to continue with this expense action.";
   pinLabel.textContent = isSetup ? "New PIN" : isRecovery ? "Recovery code" : "PIN";
   pinInput.type = isRecovery ? "text" : "password";
@@ -592,8 +602,8 @@ function configurePinPrompt(mode) {
   else pinInput.pattern = "[0-9]{4,12}";
   pinConfirmWrap.classList.toggle("hidden", !isSetup);
   pinConfirmInput.required = isSetup;
-  pinForgotButton.classList.toggle("hidden", !(mode === "verify" || mode === "change"));
-  pinCancelButton.classList.toggle("hidden", mode === "setup");
+  pinForgotButton.classList.toggle("hidden", !(mode === "verify" || mode === "change" || mode === "unlock"));
+  pinCancelButton.classList.toggle("hidden", mode === "setup" || mode === "unlock");
   pinSubmitButton.textContent = isSetup ? "Save PIN" : isRecovery ? "Continue" : "Verify PIN";
   pinSubmitButton.disabled = false;
   pinCancelButton.disabled = false;
@@ -707,7 +717,23 @@ pinCancelButton.addEventListener("click", () => finishPinRequest(false));
 pinForgotButton.addEventListener("click", () => configurePinPrompt("recovery"));
 pinDialog.addEventListener("cancel", event => {
   event.preventDefault();
-  if (!pinVerificationPending && pinRequestMode !== "setup") finishPinRequest(false);
+  if (!pinVerificationPending && pinRequestMode !== "setup" && pinRequestMode !== "unlock") {
+    finishPinRequest(false);
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && appUnlocked) {
+    appUnlocked = false;
+    unlockRequired = true;
+    appShell.inert = true;
+    return;
+  }
+  if (document.visibilityState === "visible" && !appUnlocked &&
+      localStorage.getItem(APP_PIN_STORAGE_KEY) && !pinRequestPromise) {
+    unlockRequired = true;
+    requestAppPin("unlock");
+  }
 });
 
 recoverySavedButton.addEventListener("click", finishRecoveryCode);
@@ -763,7 +789,9 @@ function init() {
   if (!localStorage.getItem(APP_PIN_STORAGE_KEY)) {
     requestAppPin("setup");
   } else {
-    addRecoveryCodeIfMissing();
+    appShell.inert = true;
+    unlockRequired = true;
+    addRecoveryCodeIfMissing().then(() => requestAppPin("unlock"));
   }
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./service-worker.js").catch(err => console.error(err));
